@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask the Field: AI for Wheat Farmers in Kazakhstan</title>
+<meta name="description" content="A PLS 519 project: could an AI agronomist help Kazakhstan's wheat farmers decide what, when and how to grow, and who would it really help?">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --soil: #2A2119;       /* chernozem: the ink */
+    --soil-2: #43362A;
+    --wheat: #E4B43F;      /* ripe wheat */
+    --wheat-pale: #F7EBCB;
+    --straw: #FBF6EA;      /* page */
+    --green: #5F8A3A;      /* healthy crop */
+    --stress: #D9A33A;     /* stressed crop */
+    --dry: #B9472B;        /* drought, and only drought */
+    --sky: #CFE6EF;
+    --muted: #6C5E50;
+    --line: #E3D7BD;
+    --display: "Unbounded", "Arial Black", sans-serif;
+    --body: "Golos Text", "Segoe UI", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--straw); color: var(--soil); font: 400 1.0625rem/1.65 var(--body); }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; } }
+  a { color: #7A5A12; text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--wheat); outline-offset: 3px; }
+  h1, h2, h3 { font-family: var(--display); line-height: 1.08; margin: 0; }
+  p { margin: 0 0 1rem; }
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 0 clamp(1.25rem, 4vw, 3rem); }
+  .measure { max-width: 42rem; }
+  sup a { text-decoration: none; font-size: .72em; font-weight: 700; }
+
+  /* ---------- bar ---------- */
+  .bar { position: sticky; top: 0; z-index: 20; background: var(--soil); }
+  .bar .wrap { display: flex; gap: 1.4rem; align-items: center; height: 3.25rem; overflow-x: auto; }
+  .bar b { font: 700 .85rem var(--display); color: var(--wheat); margin-right: auto; white-space: nowrap; }
+  .bar a { color: #CDBFA9; text-decoration: none; font-size: .9rem; white-space: nowrap; border-bottom: 2px solid transparent; padding: .2rem 0; }
+  .bar a.here { color: #fff; border-bottom-color: var(--wheat); }
+
+  /* ---------- hero ---------- */
+  .hero { background: linear-gradient(180deg, var(--sky) 0%, var(--wheat-pale) 85%); padding: clamp(2.5rem, 6vw, 4.5rem) 0 0; overflow: hidden; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 2.5rem; align-items: end; }
+  .hero h1 { font-size: clamp(2.5rem, 5.8vw, 5rem); font-weight: 900; letter-spacing: -.02em; }
+  .hero h1 span { display: block; color: var(--green); }
+  .hero .lede { font-size: 1.18rem; max-width: 30rem; margin: 1.5rem 0 1.75rem; }
+  .cta { display: inline-block; background: var(--soil); color: var(--wheat); font: 700 1rem var(--body); padding: .85rem 1.4rem; border-radius: 999px; text-decoration: none; }
+  .cta:hover { background: var(--soil-2); }
+  .hero-text { padding-bottom: 3.5rem; }
+  #field { width: 100%; height: auto; display: block; }
+  #field .plot { transition: fill 1.2s ease; }
+  .legend { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: .88rem; color: var(--soil-2); padding: .75rem 0 1rem; }
+  .legend i { display: inline-block; width: .85rem; height: .85rem; border-radius: 3px; margin-right: .4rem; vertical-align: -1px; }
+  .stalks { display: block; width: 100%; height: 70px; background: var(--soil); }
+  .stalk { transform-origin: bottom center; transform-box: fill-box; animation: sway 3.2s ease-in-out infinite alternate; }
+  @keyframes sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+
+  /* ---------- sections ---------- */
+  section { padding: clamp(3.5rem, 8vw, 6rem) 0; scroll-margin-top: 3.25rem; }
+  section.dark { background: var(--soil); color: #F3EADB; }
+  section.pale { background: var(--wheat-pale); }
+  .sec-head { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .sec-head .n { font: 900 3.4rem/1 var(--display); color: var(--wheat); }
+  .sec-head h2 { font-size: clamp(1.7rem, 3.4vw, 2.6rem); padding-top: .35rem; }
+  .sec-head.plain { grid-template-columns: 1fr; }
+  h3 { font-size: 1.15rem; margin: 2.5rem 0 .75rem; }
+
+  /* ---------- the season ---------- */
+  .season-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin: 2rem 0 0; }
+  .season-bar button {
+    font: 700 .95rem var(--body); text-align: left; cursor: pointer;
+    background: transparent; color: #CDBFA9; border: 0; border-top: 4px solid var(--soil-2); padding: .9rem 0 .3rem;
+  }
+  .season-bar button small { display: block; font-weight: 400; font-size: .82rem; }
+  .season-bar button[aria-selected="true"] { color: #fff; border-top-color: var(--wheat); }
+  .season-bar button:hover { color: #fff; }
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 17rem; gap: 2rem; margin-top: 2rem; align-items: start; }
+  .stage .col h3 { margin: 0 0 .6rem; font-size: 1rem; color: var(--wheat); }
+  .stage .col p { color: #E5D9C4; }
+  .stage .col.ai { border-left: 1px solid var(--soil-2); padding-left: 2rem; }
+  .stage-enter { animation: enter .45s cubic-bezier(.3,.7,.2,1); }
+  @keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+  .phone { background: #12100D; border-radius: 26px; padding: 14px; border: 2px solid #4A3E33; }
+  .phone .screen { background: #EDE6D6; border-radius: 14px; min-height: 260px; padding: .9rem; color: var(--soil); }
+  .phone .from { font-size: .75rem; color: var(--muted); text-align: center; margin-bottom: .6rem; }
+  .sms { background: #fff; border-radius: 14px 14px 14px 4px; padding: .6rem .75rem; font-size: .9rem; line-height: 1.4; min-height: 2.5rem; }
+  .sms .caret { display: inline-block; width: 2px; height: 1em; background: var(--soil); vertical-align: -2px; animation: blink .8s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .phone .tr { font-size: .78rem; color: var(--muted); margin-top: .6rem; line-height: 1.35; }
+  .phone + small { display: block; color: #A99A84; font-size: .78rem; margin-top: .5rem; line-height: 1.35; }
+
+  /* ---------- facts ---------- */
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; margin: 2.5rem 0; }
+  .fact { background: #fff; padding: 1.25rem; border-left: 5px solid var(--wheat); }
+  .fact b { display: block; font: 900 2rem/1.05 var(--display); margin-bottom: .4rem; font-variant-numeric: tabular-nums; }
+  .fact span { font-size: .93rem; color: var(--muted); line-height: 1.45; display: block; }
+  .fact.bad { border-left-color: var(--dry); }
+
+  /* ---------- the gap figure ---------- */
+  figure { margin: 2.5rem 0; }
+  .card { background: #fff; padding: 1.5rem; border-radius: 14px; }
+  figcaption { font-size: .9rem; color: var(--muted); margin-top: 1rem; line-height: 1.5; }
+  figcaption strong { color: var(--soil); }
+  #units { display: grid; grid-template-columns: repeat(27, 1fr); gap: 3px; }
+  #units i { aspect-ratio: 1; background: var(--line); border-radius: 2px; transform: scale(0); transition: transform .3s ease; }
+  #units.on i { transform: scale(1); }
+  #units i.unit-on { background: linear-gradient(90deg, var(--green) 0 65%, var(--line) 65%); outline: 2px solid var(--green); outline-offset: 1px; }
+  .unit-key { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: .88rem; margin-top: 1rem; }
+  .unit-key span::before { content: ""; display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; margin-right: .4rem; vertical-align: -1px; background: var(--line); }
+  .unit-key span.g::before { background: var(--green); }
+  .gap-count { font: 900 clamp(2rem, 4vw, 3rem)/1 var(--display); }
+  .gap-count small { font: 400 1rem var(--body); color: var(--muted); display: block; margin-top: .4rem; }
+  .two { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 2rem; align-items: start; }
+
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; margin: 1.5rem 0; background: #fff; }
+  th, td { text-align: left; padding: .7rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--soil); color: #fff; }
+  td.gap { color: var(--dry); }
+
+  .todo { border: 2px dashed var(--dry); padding: 1rem 1.25rem; border-radius: 10px; font-size: .95rem; background: #FFF5F0; color: var(--soil); margin: 1.5rem 0; }
+  .dark .todo, .verdict .todo { background: #3A2A20; color: #F3EADB; }
+  ol.refs { font-size: .9rem; line-height: 1.5; padding-left: 1.5rem; }
+  ol.refs li { margin-bottom: .55rem; }
+  footer { background: var(--soil); color: #CDBFA9; padding: 2rem 0; font-size: .9rem; }
+
+
+  /* section 3 & 4 */
+  .lit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin: 2rem 0; }
+  .lit article { background: #fff; padding: 1.4rem 1.5rem; border-radius: 14px; border-top: 5px solid var(--wheat); }
+  .lit h3 { margin: 0 0 .7rem; font-size: 1rem; }
+  .lit p { font-size: .97rem; margin-bottom: .7rem; }
+  .gapbox { background: var(--soil); color: #F3EADB; border-radius: 14px; padding: 1.5rem 1.75rem; margin-top: 1.5rem; }
+  .gapbox h3 { margin: 0 0 .6rem; color: var(--wheat); font-size: 1rem; }
+  .gapbox p { margin: 0; }
+  .evid { margin: 2rem 0; }
+  .evid .row { display: grid; grid-template-columns: 17rem minmax(0, 1fr) 4rem; gap: 1rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid var(--line); font-size: .93rem; }
+  .evid .track { height: 18px; background: var(--wheat-pale); border-radius: 4px; overflow: hidden; }
+  .evid .track i { display: block; height: 100%; width: 0; background: var(--green); border-radius: 4px; transition: width 1.2s cubic-bezier(.3,.7,.2,1); }
+  .evid.seen .track i { width: var(--w); }
+  .evid .row b { text-align: right; font-variant-numeric: tabular-nums; }
+  .pipe { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: .75rem; align-items: stretch; margin: 2rem 0; }
+  .pipe .node { background: #fff; border-radius: 14px; padding: 1.2rem 1.3rem; }
+  .pipe .node h3 { margin: 0 0 .5rem; font-size: .95rem; }
+  .pipe .node ul { margin: 0; padding-left: 1.1rem; font-size: .93rem; }
+  .pipe .arrow { align-self: center; width: 42px; height: 14px; position: relative; }
+  .pipe .arrow::before { content: ""; position: absolute; left: 0; right: 6px; top: 6px; border-top: 2px dashed var(--soil-2); }
+  .pipe .arrow::after { content: ""; position: absolute; right: 0; top: 2px; border: 5px solid transparent; border-left: 8px solid var(--soil-2); }
+  .pipe .arrow i { position: absolute; top: 2px; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--wheat); animation: flow 1.6s linear infinite; }
+  @keyframes flow { to { left: 30px; } }
+  .bill-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; margin: 1.5rem 0 0; }
+  .bill-card { background: #fff; border-radius: 14px; padding: 1.3rem 1.4rem; }
+  .bill-card h3 { margin: 0 0 .25rem; font-size: 1rem; }
+  .bill-card .tag { display: inline-block; font-size: .75rem; font-weight: 700; padding: .1rem .55rem; border-radius: 999px; margin-bottom: .6rem; }
+  .tag.up { background: #E3EEDA; color: #3E5E22; } .tag.down { background: #F6DED6; color: #8E2F18; } .tag.mixed { background: #F6EACB; color: #6E5310; }
+  .bill-card p { font-size: .95rem; margin: 0; }
+  @media (max-width: 58rem) { .lit { grid-template-columns: 1fr; } .pipe { grid-template-columns: 1fr; } .pipe .arrow { transform: rotate(90deg); justify-self: center; } .evid .row { grid-template-columns: 9rem minmax(0,1fr) 3.5rem; } }
+
+
+  /* verdict */
+  .verdict { background: var(--soil); color: #F3EADB; }
+  .verdict .big { font: 900 clamp(2rem, 4.6vw, 3.6rem)/1.05 var(--display); color: #fff; max-width: 18ch; margin: 0 0 1.75rem; }
+  .verdict .lede { font-size: 1.15rem; max-width: 42rem; color: #E5D9C4; }
+  .conds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2.5rem 0; }
+  .cond { border-top: 4px solid var(--wheat); padding: 1.1rem 0 0; }
+  .cond.key { border-top-color: var(--dry); }
+  .cond h3 { margin: 0 0 .5rem; font-size: 1rem; color: #fff; }
+  .cond p { font-size: .96rem; color: #D8CBB4; margin: 0; }
+  .verdict .measure p { color: #E5D9C4; }
+  .verdict h3.sub { color: var(--wheat); }
+  @media (max-width: 58rem) { .conds { grid-template-columns: 1fr; } }
+
+
+  /* ===== added visuals ===== */
+  .progress { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--wheat); }
+  .bar { position: sticky; }
+  .viz { background: #fff; border-radius: 14px; padding: 1.5rem; margin: 2.5rem 0; }
+  .viz h3.vt { margin: 0 0 1rem; font-size: 1rem; }
+  /* fading farms */
+  #farms { display: grid; grid-template-columns: repeat(29, 1fr); gap: 4px; max-width: 40rem; }
+  #farms i { aspect-ratio: 1; border-radius: 50%; background: var(--soil-2); transition: background .5s ease, box-shadow .5s ease, transform .5s ease; }
+  #farms i.gone { background: transparent; box-shadow: inset 0 0 0 1.5px var(--dry); transform: scale(.75); }
+  .farm-count { font: 900 clamp(1.8rem, 4vw, 2.8rem)/1 var(--display); font-variant-numeric: tabular-nums; margin-bottom: .3rem; }
+  .farm-count + p { color: var(--muted); font-size: .93rem; margin-bottom: 1.1rem; }
+  .vkey { display: flex; gap: .4rem 1.5rem; flex-wrap: wrap; font-size: .88rem; margin-top: 1rem; }
+  .vkey span::before { content: ""; display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; margin-right: .4rem; vertical-align: -1px; background: var(--soil-2); }
+  .vkey span.out::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--dry); }
+  /* two numbers */
+  .clash { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.25rem; align-items: center; }
+  .clash .side { background: var(--straw); border-radius: 12px; padding: 1.25rem; }
+  .clash .side b { display: block; font: 900 clamp(1.8rem, 4vw, 2.6rem)/1 var(--display); margin-bottom: .4rem; }
+  .clash .side span { font-size: .92rem; color: var(--muted); display: block; line-height: 1.4; }
+  .clash .side em { font-style: normal; font-weight: 700; color: var(--soil); }
+  .clash .neq { font: 900 3.2rem/1 var(--display); color: var(--dry); transform: scale(0) rotate(-90deg); transition: transform .6s cubic-bezier(.3,1.6,.4,1) .3s; }
+  .clash.seen .neq { transform: scale(1) rotate(0); }
+  /* data wall */
+  #wall-svg { width: 100%; height: auto; display: block; }
+  .wkey .k1::before { background: #5F8A3A; } .wkey .k2::before { background: #E4B43F; } .wkey .k3::before { background: #B9472B; } .wkey .k4::before { background: #A99A84; }
+  /* balance */
+  #scale-svg { width: 100%; height: auto; display: block; max-width: 40rem; margin: 0 auto; }
+  #beam { transform-box: view-box; transform-origin: 300px 60px; transform: rotate(0deg); transition: transform 1.6s cubic-bezier(.3,1.4,.4,1) .3s; }
+  #scale-wrap.seen #beam { transform: rotate(8deg); }
+  .pan { transition: transform 1.6s cubic-bezier(.3,1.4,.4,1) .3s; }
+  #scale-wrap.seen #panL { transform: translateY(-28px); }
+  #scale-wrap.seen #panR { transform: translateY(28px); }
+  @media (max-width: 58rem) { #farms { grid-template-columns: repeat(18, 1fr); } .clash { grid-template-columns: 1fr; } .clash .neq { justify-self: center; } }
+
+  @media (max-width: 58rem) {
+    .hero-grid, .two { grid-template-columns: 1fr; }
+    .hero-text { padding-bottom: 0; }
+    .stage { grid-template-columns: 1fr; }
+    .stage .col.ai { border-left: 0; padding-left: 0; }
+    .phone { max-width: 18rem; }
+    .season-bar { grid-template-columns: repeat(2, 1fr); }
+    .sec-head { grid-template-columns: 3rem 1fr; } .sec-head .n { font-size: 2.4rem; }
+    #units { grid-template-columns: repeat(18, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="bar" aria-label="Sections">
+  <span class="progress" id="progress" aria-hidden="true"></span>
+  <div class="wrap">
+    <b>Ask the Field</b>
+    <a href="#season">The season</a>
+    <a href="#problem">1 Problem</a>
+    <a href="#data">2 Data</a>
+    <a href="#research">3 Research</a>
+    <a href="#solution">4 Solution &amp; bill</a>
+    <a href="#verdict">Verdict</a>
+    <a href="#sources">Sources</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <h1>Ask the field<span>before you sow.</span></h1>
+      <p class="lede">Northern Kazakhstan grows most of the country's wheat on rain alone. An AI agronomist could read satellites and weather to tell each farmer what to sow, when, and where the crop is struggling. The question is which farmers it would reach.</p>
+      <a class="cta" href="#season">Walk through the season</a>
+    </div>
+    <div>
+      <svg id="field" viewBox="0 0 600 360" role="img" aria-labelledby="f-t f-d">
+        <title id="f-t">A satellite scanning wheat fields</title>
+        <desc id="f-d">A satellite passes over a patchwork of fields. Behind its scan line, each field is coloured by crop condition: healthy, stressed or dry. Illustrative.</desc>
+      </svg>
+      <div class="legend" aria-hidden="true"><span><i style="background:#5F8A3A"></i>healthy</span><span><i style="background:#D9A33A"></i>stressed</span><span><i style="background:#B9472B"></i>dry</span><span style="color:#8A7A66">Illustration, not real satellite data</span></div>
+    </div>
+  </div>
+  <svg class="stalks" id="stalks" viewBox="0 0 1200 70" preserveAspectRatio="none" aria-hidden="true"></svg>
+</header>
+
+<!-- ================= THE SEASON ================= -->
+<section class="dark" id="season">
+  <div class="wrap">
+    <div class="sec-head plain"><h2>One season, four decisions</h2></div>
+    <p class="measure" style="color:#E5D9C4">Every year a wheat farmer in the north makes the same four big decisions, mostly by habit or by watching the neighbours. Here is what each one looks like today, and what an AI agronomist would add.</p>
+
+    <div class="season-bar" role="tablist" aria-label="Stages of the season">
+      <button role="tab" aria-selected="true" data-i="0">What to sow<small>Winter</small></button>
+      <button role="tab" aria-selected="false" data-i="1">When to sow<small>May</small></button>
+      <button role="tab" aria-selected="false" data-i="2">Feed and protect<small>June–July</small></button>
+      <button role="tab" aria-selected="false" data-i="3">When to harvest<small>August–September</small></button>
+    </div>
+    <div class="stage" id="stage" role="tabpanel" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- ================= SECTION 1 ================= -->
+<section id="problem">
+  <div class="wrap">
+    <div class="sec-head"><span class="n">1</span><h2>The problem</h2></div>
+    <div class="measure">
+      <p>Kazakhstan is one of the world's major wheat exporters, and its wheat comes from one corner of the country. Kostanay, Akmola and North Kazakhstan regions together produce 79% of the national wheat crop.<sup><a href="#r1">1</a></sup> Wheat there is spring-sown and rain-fed, with no irrigation to fall back on, which makes it highly exposed to drought and to climate change.<sup><a href="#r2">2</a></sup></p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b data-count="79">0</b><span>% of the country's wheat comes from three northern regions<sup><a href="#r1">1</a></sup></span></div>
+      <div class="fact"><b data-count="17" data-suffix=" c/ha">0</b><span>average grain yield in the record year 2025, up from 16.2 in 2024<sup><a href="#r4">4</a></sup></span></div>
+      <div class="fact bad"><b>2010</b><span>the worst wheat year of the century, with severe consequences for countries that import Kazakh wheat<sup><a href="#r3">3</a></sup></span></div>
+    </div>
+    <div class="measure">
+      <h3>How it is changing</h3>
+      <p>The climate is making each season harder to read. A Potsdam Institute study attributes a fall in northern Kazakhstan's wheat production to human-induced climate change.<sup><a href="#r3">3</a></sup> A tree-ring study of North Kazakhstan region finds that the latest regime switches abruptly between extremely dry and extremely wet years, a pattern called "whiplash".<sup><a href="#r10">10</a></sup> A record harvest can follow a disaster, and the other way round. In such a climate, last year's sowing date, last year's crop choice and the neighbour's habits are poor guides to this year's decisions.</p>
+      <p>Even good years hide a low baseline. In the record harvest of 2025, the average grain yield was 17 centners per hectare.<sup><a href="#r4">4</a></sup> The gap between what northern fields produce and what they could produce under better-timed decisions is the space where advice could matter.</p>
+      <p>Each season turns on four decisions: what to sow on each field, when to sow it, how to feed and protect the crop, and when to harvest. Each is made under uncertainty about rain and frost, and each is still made mostly by habit and by watching the neighbours. When the climate is stable, habit is a reasonable guide. When it whiplashes, habit becomes a gamble, and the cost of a wrong guess falls hardest on the farms with the least room for error.</p>
+
+      <h3>Who is affected</h3>
+      <p>The people who carry this risk are not all equal. Large agroholdings employ agronomists, buy satellite services and can absorb a bad year. Small and medium farms cannot. Their numbers are falling fast: Kazakhstan had 261,000 active peasant and farm households in 2025 and 243,000 in 2026, a loss of about 18,000 in a single year.<sup><a href="#r6">6</a></sup> The state has also fallen behind on its promises to them: farmers are owed 391.7 billion tenge in unpaid subsidies from past years.<sup><a href="#r12">12</a></sup></p>
+      <figure class="viz" id="fig-farms">
+        <div class="farm-count" id="farm-n">261,000</div>
+        <p>active peasant and farm households</p>
+        <div id="farms" role="img" aria-label="261 dots, each standing for 1,000 farm households. 18 of them fade out: from 261,000 households in 2025 to 243,000 in 2026."></div>
+        <div class="vkey"><span>1,000 farm households</span><span class="out">gone in one year</span></div>
+        <figcaption><strong>Eighteen thousand farms in a year.</strong> Active peasant and farm households in Kazakhstan, 2025 and 2026. Each dot is 1,000 households. Source: Bureau of National Statistics via Kursiv.<sup><a href="#r6">6</a></sup> The figures count households that stopped operating, not why they stopped.</figcaption>
+      </figure>
+      <p>Beyond the farm gate, the stakes are regional: a failed harvest, as in 2010, also hits the countries that buy Kazakh wheat.<sup><a href="#r3">3</a></sup></p>
+
+      <h3>The social-science question</h3>
+      <p>AI in farming is usually sold as a productivity tool. But productivity for whom? The tools already exist, and in Kazakhstan they are concentrated among a few hundred producers (section 2). If only large agroholdings can use them, AI will speed up the squeeze that is already pushing small farms out. If advice is free, in Kazakh and reachable by a basic phone, it might narrow the gap.</p>
+      <p>There is a second, more political layer. The actor with the most data on Kazakh fields is the state, which uses it to inspect farmers. So the question this project asks is: <em>who should build and control an AI agronomist so that it helps the farmers who need it most, and can a state that monitors farmers also be trusted to advise them?</em></p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SECTION 2 ================= -->
+<section class="pale" id="data">
+  <div class="wrap">
+    <div class="sec-head"><span class="n">2</span><h2>Background &amp; data</h2></div>
+    <div class="two">
+      <figure class="card" id="fig-gap" style="margin-top:0">
+        <div class="gap-count"><span id="gap-n">0</span><small>agricultural producers use digital tools, out of roughly 243,000 active farm households</small></div>
+        <div id="units" style="margin-top:1.25rem" role="img" aria-label="243 squares, each standing for 1,000 farm households. Less than one square is filled: 648 producers using digital tools."></div>
+        <div class="unit-key"><span>1,000 farm households</span><span class="g">producers using digital tools (648)</span></div>
+        <figcaption><strong>The digital gap in Kazakh farming.</strong> Each square is 1,000 active peasant and farm households (243,000 in 2026).<sup><a href="#r6">6</a></sup> The filled part is the 648 agricultural producers, 396 of them in crop farming, that the Ministry of Agriculture reports using digital tools.<sup><a href="#r5">5</a></sup> The two counts use different categories, since the 648 include companies, so the ratio is indicative, not exact.</figcaption>
+      </figure>
+      <div>
+        <h3 style="margin-top:0">Who measures what</h3>
+        <p><strong>The Bureau of National Statistics</strong> counts the harvest, sown area and average yields by region, and the number of active farm households.<sup><a href="#r4">4</a>,<a href="#r6">6</a></sup> <strong>The Ministry of Agriculture</strong> counts producers using digital tools: 648, of whom 396 grow crops.<sup><a href="#r5">5</a></sup> It also reports more than 200 "smart farms" using drones, satellites and sensors to forecast yields.<sup><a href="#r5">5</a></sup></p>
+        <p>The state also watches the fields from space, mostly for control. In 2026 the JerInSpectr remote-monitoring system produced more than 18,000 case cards covering 8.3 million hectares in 17 regions.<sup><a href="#r7">7</a></sup> The Ministry's own coverage notes that its systems still need connecting so that data serves farmers, not only state reporting.<sup><a href="#r7">7</a></sup> A Digital Transformation Map for agriculture to 2027 was approved in September 2025.<sup><a href="#r13">13</a></sup></p>
+        <p><strong>International organisations</strong> add qualitative evidence rather than numbers. An FAO project for the Ministry found that awareness of digital tools among small and medium farmers remained scarce.<sup><a href="#r18">18</a></sup> <strong>Researchers</strong> supply the long climate record that links drought to wheat output.<sup><a href="#r2">2</a></sup></p>
+      </div>
+    </div>
+
+    <h3>Where the data is silent</h3>
+    <table>
+      <thead><tr><th>What we can see</th><th>What we cannot see</th></tr></thead>
+      <tbody>
+        <tr><td>Total harvest and average yield by region</td><td class="gap">Yield by farm size. We cannot show whether small farms do worse, only that they are disappearing</td></tr>
+        <tr><td>How many producers use digital tools (648)</td><td class="gap">Which ones, how large, and whether the tools raised their yields. The Ministry gives no figures on results</td></tr>
+        <tr><td>Hectares checked by satellite for land-use control</td><td class="gap">Whether any of that satellite data reaches farmers as advice</td></tr>
+        <tr><td>Weather and drought records since 1950</td><td class="gap">Field-level soil moisture for small farms, which an AI model would need</td></tr>
+      </tbody>
+    </table>
+    <div class="measure">
+      <h3>How far can the numbers be trusted?</h3>
+      <p>The harvest statistics are solid at the regional level but say nothing about farm size, so the central claim of this project, that small farms fall behind, rests on indirect evidence: their disappearance, not their yields. The digital-tools figure comes from the Ministry that promotes digitalisation, with no detail on who the 648 producers are or what changed for them. Worse, it clashes with research: Neftissov et al. report that 60 to 75% of agricultural <em>enterprises</em> already use elements of precision farming.<sup><a href="#r33">33</a></sup> Both can be true only if "digital" means different things and "enterprise" covers only the larger, registered companies. Either way, nobody counts the small farm households, and the two numbers cannot be put on one scale. And the most detailed field data, from JerInSpectr, was collected to find violations. Data gathered for enforcement shows where farmers break rules, not where they need help.</p>
+      <figure class="viz clash-fig" style="max-width:none">
+        <h3 class="vt">Two official-looking answers to one question: how digital is Kazakh farming?</h3>
+        <div class="clash" id="clash">
+          <div class="side"><b>648</b><span><em>producers</em> use digital tools, says the Ministry of Agriculture<sup><a href="#r5">5</a></sup></span></div>
+          <div class="neq" aria-hidden="true">≠</div>
+          <div class="side"><b>60–75%</b><span>of agricultural <em>enterprises</em> use elements of precision farming, say Neftissov et al.<sup><a href="#r33">33</a></sup></span></div>
+        </div>
+        <figcaption><strong>The numbers measure different things.</strong> One counts producers using digital tools in the Ministry's sense, the other the share of enterprises using any element of precision farming. Neither counts small farm households, which is why this project treats both with caution.</figcaption>
+      </figure>
+      <p>The most important silence: we know what share of farms is digital, but not what being digital does for a farm in Kazakhstan. Any claim that AI raises yields here rests on evidence from other countries. The farms that fall through the gaps are exactly the ones this project is about: small, offline and uncounted.</p>
+      <p>Two groups are almost invisible in the numbers. Rural households farming small plots for themselves sit outside the farm counts altogether. And women farmers, whom the FAO project singled out as a priority for digital-skills support, do not appear separately in any of the figures above.<sup><a href="#r18">18</a></sup> A service designed from these statistics alone would be designed for the average registered farm, which is not where the need is greatest.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SECTION 3 ================= -->
+<section id="research">
+  <div class="wrap">
+    <div class="sec-head"><span class="n">3</span><h2>Current state of research</h2></div>
+    <p class="measure">The research falls into four conversations. They rarely talk to each other, and that is where this project sits.</p>
+    <div class="lit">
+      <article>
+        <h3>1. The decisions are getting harder</h3>
+        <p>Climate scientists agree that northern Kazakhstan's spring-sown, rain-fed wheat is highly exposed to drought. Karatayev and colleagues link seventy years of station data to wheat output and confirm that drought is the main threat.<sup><a href="#r2">2</a></sup> Romanovska et al. go further and attribute part of the recent fall in production to human-induced climate change.<sup><a href="#r3">3</a></sup> Panyushkina et al. show the newest pattern is "whiplash" between extreme dry and extreme wet years.<sup><a href="#r10">10</a></sup></p>
+        <p>Together they suggest that habit, the farmer's main tool, is losing its value. The same research group also shows the problem is tractable: Romanovska, Schauberger and Gornott find that wheat yields in Kazakhstan can be forecast successfully with a statistical crop model built on weather data.<sup><a href="#r34">34</a></sup> What none of these studies asks is how farmers could receive and act on such forecasts.</p>
+      </article>
+      <article>
+        <h3>2. Digital advice works, modestly</h3>
+        <p>The strongest evidence comes from development economics. Fabregas, Kremer and Schilbach review the experiments and find that agricultural information sent by mobile phone raised yields by 4% and the odds of adopting recommended inputs by 22%, with benefits likely exceeding costs by an order of magnitude.<sup><a href="#r14">14</a></sup> They also warn that messages written by agriculture ministries are often hard for farmers to understand.<sup><a href="#r14">14</a></sup></p>
+        <p>Six randomised trials in Kenya and Rwanda, reaching over 128,000 farmers, confirm the pattern: effects are modest, but text messages are so cheap that they pay off.<sup><a href="#r15">15</a></sup> What is known, then, is that well-designed advice changes behaviour a little, for a lot of people, at a low price. It is not a revolution, and the literature that treats it as one rests on pilots.</p>
+      </article>
+      <article>
+        <h3>3. Who adopts, and who is left out</h3>
+        <p>Klerkx, Jakku and Labarthe's review of the social science of digital farming maps a field that is growing fast but is scattered.<sup><a href="#r16">16</a></sup> In Kazakhstan, studies are mostly technical or economic. Toguzova et al. examine precision-farming tools on farms in East Kazakhstan.<sup><a href="#r17">17</a></sup> An FAO project for the Ministry of Agriculture found that awareness of digital tools among medium and small farmers remained scarce, and that commercial vendors were their main source of information about them.<sup><a href="#r18">18</a></sup></p>
+        <p>In other words, the people selling the tools are the ones explaining them. Where Kazakh researchers try to measure results, the methods are thin: Neftissov et al. estimate the efficiency of precision farming in Kazakh agricultural enterprises by comparing actual yields with a forecast from past trends, reaching 8.46% for 2022.<sup><a href="#r33">33</a></sup> With no comparison group, that number cannot separate the tools from the weather.</p>
+      </article>
+      <article>
+        <h3>4. Data is power</h3>
+        <p>Critical scholars ask who controls farm data. Rotz et al. argue that policy on digital agriculture stays technocentric and pays little attention to political factors such as data ownership and control.<sup><a href="#r19">19</a></sup> Carbonell describes a power asymmetry between farmers and agribusinesses that aggregate field-by-field data, and suggests it could be rebalanced by open data and publicly funded analytic tools.<sup><a href="#r20">20</a></sup></p>
+        <p>For Kazakhstan, the question has a twist: the biggest holder of field data is not a corporation but the state's own monitoring system.</p>
+      </article>
+    </div>
+    <div class="measure">
+      <h3>What is contested</h3>
+      <p>Three disagreements run through this literature. <strong>How big is the effect?</strong> Single pilots report gains of 30% (section 4), while reviews across many studies find around 4%.<sup><a href="#r14">14</a></sup> <strong>Who gains?</strong> Optimists see digital advice as a cheap way to reach farmers whom extension services never reached. Critical scholars see a technology that concentrates power with those who own the data and the platforms.<sup><a href="#r19">19</a>,<a href="#r20">20</a></sup> <strong>Who should provide it?</strong> Fabregas and colleagues argue that well-known failures in markets for information mean such systems will not reach a socially efficient scale on purely commercial terms, which makes a case for public support.<sup><a href="#r14">14</a></sup> Yet in Kazakhstan, the public actor with the data is also the inspector.</p>
+    </div>
+    <div class="gapbox measure">
+      <h3>The gap</h3>
+      <p>Almost all evidence that digital advice helps farmers comes from smallholders in Africa and India. Kazakhstan's wheat farms are larger, rain-fed and in a different climate. And the Kazakh literature on digital farming measures technology and costs, not who benefits or who controls the data. No study asks whether the satellite data the state already collects to <em>check</em> farmers could be turned into advice that <em>helps</em> them, and what that would do to trust between farmers and the state.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SECTION 4 ================= -->
+<section class="pale" id="solution">
+  <div class="wrap">
+    <div class="sec-head"><span class="n">4</span><h2>The solution, and what it would cost</h2></div>
+    <div class="measure">
+      <h3 style="margin-top:0">It has worked elsewhere</h3>
+      <p><strong>India, the AI Sowing App.</strong> Microsoft, the research institute ICRISAT and the government of Andhra Pradesh built an AI app that tells farmers the best date to sow, without any sensors in the field.<sup><a href="#r8">8</a></sup> It ran as part of the state's own programme for the farm sector, so farmers did not pay for the advice; the state and its partners did.<sup><a href="#r9">9</a></sup> In the 2016 pilot, 175 smallholder groundnut farmers received ten sowing advisories by SMS in Telugu. Those who followed the advice saw a 30% yield increase.<sup><a href="#r24">24</a></sup> The sowing window was calculated from 30 years of climate data for one area.<sup><a href="#r24">24</a></sup></p>
+      <p>Three caveats travel with that number. It measures farmers <em>who followed</em> the advice, who may have been better farmers to begin with. The crop was groundnut, not wheat. And the farm data was stored in Microsoft's Azure cloud.<sup><a href="#r23">23</a></sup> The pilot was a public service, but also a showcase for a company selling cloud services to governments.</p>
+      <p><strong>Kenya and Rwanda, Precision Development.</strong> The non-profit Precision Development (PxD) sends farmers personalised advice by SMS and voice calls.<sup><a href="#r21">21</a></sup> In six trials across Kenya and Rwanda, text messages raised the odds of farmers following the advice to use agricultural lime by 19% combined.<sup><a href="#r15">15</a></sup> Effects were larger in Kenya than in Rwanda, plausibly because of better digital literacy and phone access.<sup><a href="#r22">22</a></sup> That detail matters: digital advice helps most where people are already connected.</p>
+    </div>
+
+    <figure class="card evid" id="evid">
+      <h3 style="margin:0 0 .75rem;font-size:1rem">How big is the effect? It depends who you ask</h3>
+      <div class="row"><span>India pilot, 175 farmers who followed the advice</span><span class="track"><i style="--w:100%"></i></span><b>+30%</b></div>
+      <div class="row"><span>Meta-analysis, Africa and India</span><span class="track"><i style="--w:13.3%"></i></span><b>+4%</b></div>
+      <figcaption><strong>A pilot is not a policy.</strong> Yield gain among groundnut farmers who followed the 2016 Sowing App advice<sup><a href="#r24">24</a></sup> compared with the yield gain from mobile agricultural information found across studies by Fabregas, Kremer and Schilbach.<sup><a href="#r14">14</a></sup> Small pilots with motivated farmers tend to show bigger effects than programmes at scale. This project plans around the smaller number.</figcaption>
+    </figure>
+
+    <h3>The proposal for Kazakhstan</h3>
+    <p class="measure">A public AI agronomist, run as an advisory service rather than an inspection tool. It reads data that mostly exists already and sends each farmer a few messages per season, in Kazakh or Russian, to the phone they already have.</p>
+    <div class="pipe" aria-label="How the advisor works: data in, model, advice out">
+      <div class="node"><h3>Data in</h3><ul><li>Free satellite imagery of every field</li><li>Kazhydromet weather and forecasts</li><li>Field boundaries the state already maps</li><li>What the farmer reports back</li></ul></div>
+      <div class="arrow" aria-hidden="true"><i></i></div>
+      <div class="node"><h3>The model</h3><ul><li>Tracks crop condition through the season</li><li>Estimates sowing and harvest windows</li><li>Flags lagging parts of a field</li><li>Learns which advice farmers follow</li></ul></div>
+      <div class="arrow" aria-hidden="true"><i style="animation-delay:.8s"></i></div>
+      <div class="node"><h3>Advice out</h3><ul><li>SMS or voice in Kazakh or Russian</li><li>A few messages per season, not a dashboard</li><li>Free for small farms</li><li>Farmer owns their data</li></ul></div>
+    </div>
+    <p class="measure">Two design choices follow from the research. First, advice is written and tested with farmers, not by the ministry alone, because ministry messages are often hard to use.<sup><a href="#r14">14</a></sup> Second, data a farmer shares for advice is walled off from inspection systems such as JerInSpectr. Without that wall, a farmer who reports a failing field is reporting on himself.</p>
+    <figure class="viz" id="fig-wall">
+      <h3 class="vt">The wall: data flows to the advisor, never to the inspector</h3>
+      <svg id="wall-svg" viewBox="0 0 700 260" role="img" aria-labelledby="w-t w-d">
+        <title id="w-t">Data flows between the farmer and the advisor; flows toward the inspector are blocked by a wall</title>
+        <desc id="w-d">Green dots carry field data from the farmer to the advisor. Gold dots carry advice back to the farmer. Red dots heading from the advisor to the inspection system stop at a wall and vanish.</desc>
+        <g id="wall-dots"></g>
+        <g font-size="14" fill="#2A2119">
+          <rect x="20" y="95" width="140" height="70" rx="12" fill="#F7EBCB" stroke="#E3D7BD"/><text x="90" y="126" text-anchor="middle" font-weight="700">Farmer</text><text x="90" y="146" text-anchor="middle" font-size="12" fill="#6C5E50">phone, SMS</text>
+          <rect x="280" y="95" width="140" height="70" rx="12" fill="#2A2119"/><text x="350" y="126" text-anchor="middle" font-weight="700" fill="#E4B43F">AI advisor</text><text x="350" y="146" text-anchor="middle" font-size="12" fill="#CDBFA9">independent operator</text>
+          <rect x="545" y="20" width="140" height="70" rx="12" fill="#fff" stroke="#B9472B" stroke-dasharray="5 4"/><text x="615" y="51" text-anchor="middle" font-weight="700" fill="#B9472B">Inspection</text><text x="615" y="71" text-anchor="middle" font-size="12" fill="#6C5E50">e.g. JerInSpectr</text>
+          <rect x="545" y="170" width="140" height="70" rx="12" fill="#fff" stroke="#E3D7BD"/><text x="615" y="201" text-anchor="middle" font-weight="700">State</text><text x="615" y="221" text-anchor="middle" font-size="12" fill="#6C5E50">anonymised totals only</text>
+        </g>
+        <rect x="487" y="22" width="10" height="66" rx="3" fill="#B9472B"/>
+        <g stroke="#E3D7BD" stroke-width="2" fill="none"><path d="M160 120 H280"/><path d="M160 140 H280"/><path d="M420 115 L545 55"/><path d="M420 145 L545 205"/></g>
+      </svg>
+      <div class="vkey wkey" style="margin-top:.5rem"><span class="k1">field data</span><span class="k2">advice</span><span class="k3">blocked</span><span class="k4">anonymised totals</span></div>
+      <figcaption><strong>The condition everything depends on.</strong> Field data reaches the advisor and advice goes back to the farmer. The state sees anonymised totals, but nothing a farmer shares can reach the inspection system. Concept diagram of this project's proposal.</figcaption>
+    </figure>
+    <p class="measure"><strong>Who it reaches, and how we would know it works.</strong> The first users would be small and medium wheat farms in Kostanay, Akmola and North Kazakhstan, recruited through farmers' associations rather than through the akimat, so that joining does not feel like registering with an inspector. The pilot would be built as an experiment: some farms receive advice in the first season, a comparison group receives it a season later, and the results are published either way. That is the method behind the East African evidence, and it is exactly what the Kazakh studies of precision farming lack.</p>
+
+    <h3>The bill</h3>
+    <p class="measure">Priced with the tools of Parts III and IV of the course. The costs are uneven: the environmental and economic bill is small, the governance bill is large.</p>
+    <figure class="viz" id="scale-wrap">
+      <svg id="scale-svg" viewBox="0 0 600 320" role="img" aria-labelledby="sc-t sc-d">
+        <title id="sc-t">The bill on a balance</title>
+        <desc id="sc-d">A balance scale tips toward the governance side: political and governance, data ethics, equity and labour costs outweigh the small environmental and economic costs.</desc>
+        <polygon points="300,60 272,295 328,295" fill="#43362A"/>
+        <rect x="230" y="293" width="140" height="10" rx="3" fill="#2A2119"/>
+        <g id="panL" class="pan">
+          <line x1="100" y1="60" x2="45" y2="215" stroke="#43362A" stroke-width="2"/><line x1="100" y1="60" x2="155" y2="215" stroke="#43362A" stroke-width="2"/>
+          <path d="M35 215 H165 Q100 248 35 215 Z" fill="#E3D7BD"/>
+          <rect x="60" y="187" width="80" height="26" rx="5" fill="#5F8A3A"/><text x="100" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Economic</text>
+          <rect x="60" y="159" width="80" height="26" rx="5" fill="#D9A33A"/><text x="100" y="177" text-anchor="middle" font-size="12" font-weight="700" fill="#2A2119">Environment</text>
+        </g>
+        <g id="panR" class="pan">
+          <line x1="500" y1="60" x2="435" y2="215" stroke="#43362A" stroke-width="2"/><line x1="500" y1="60" x2="565" y2="215" stroke="#43362A" stroke-width="2"/>
+          <path d="M425 215 H575 Q500 248 425 215 Z" fill="#E3D7BD"/>
+          <rect x="446" y="187" width="108" height="26" rx="5" fill="#B9472B"/><text x="500" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Governance</text>
+          <rect x="452" y="159" width="96" height="26" rx="5" fill="#B9472B"/><text x="500" y="177" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Data ethics</text>
+          <rect x="460" y="131" width="80" height="26" rx="5" fill="#C9694F"/><text x="500" y="149" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Equity</text>
+          <rect x="466" y="103" width="68" height="26" rx="5" fill="#D9A33A"/><text x="500" y="121" text-anchor="middle" font-size="12" font-weight="700" fill="#2A2119">Labour</text>
+        </g>
+        <g id="beam"><rect x="90" y="54" width="420" height="12" rx="6" fill="#2A2119"/><circle cx="300" cy="60" r="9" fill="#E4B43F"/></g>
+      </svg>
+      <figcaption><strong>The bill is uneven.</strong> The environmental and economic costs of this proposal are small; the governance, data and equity costs are large. This is my assessment of the six cards below, not a measurement.</figcaption>
+    </figure>
+    <div class="bill-grid">
+      <div class="bill-card"><h3>Environmental</h3><span class="tag mixed">small, but on coal</span><p>This is not a chatbot answering millions of questions. The model runs over each field a few times per season, and messages are short, so the compute is modest compared with the generative systems Luccioni et al. warn about.<sup><a href="#r25">25</a></sup> But any data centre in Kazakhstan runs on a grid where coal produced 62.1% of electricity.<sup><a href="#r26">26</a></sup> Cooling also has a water cost, which Li et al. show is usually hidden.<sup><a href="#r27">27</a></sup> On the farm side, targeted fertiliser means less waste, but better forecasts could push wheat onto marginal land in wet years.</p></div>
+      <div class="bill-card"><h3>Economic</h3><span class="tag up">likely gain</span><p>Text messages cost almost nothing per farmer, and reviews find benefits well above costs.<sup><a href="#r14">14</a></sup> The real cost is building and maintaining the model, and paying for local data work. The state pays. Who profits? Farmers by a few percent each; telecoms and any cloud provider steadily; and, if access is uneven, large farms most, since they can act on advice with machinery and credit that small farms lack.</p></div>
+      <div class="bill-card"><h3>Labour</h3><span class="tag mixed">mixed</span><p>Agronomists could be replaced or freed for hard cases. But the system also depends on hidden labour: people who label satellite images with what is actually growing, check fields on the ground, and correct the model, the "trainer" and "verifier" roles Tubaro et al. describe.<sup><a href="#r28">28</a></sup> Farmers who report back become unpaid data workers too. Williams and Miceli warn that such data work tends to stay invisible.<sup><a href="#r29">29</a></sup></p></div>
+      <div class="bill-card"><h3>Political and governance</h3><span class="tag down">main risk</span><p>Under Law No. 230-VIII "On Artificial Intelligence", in force since January 2026, the owner of a system classifies its own risk level.<sup><a href="#r30">30</a></sup> An advisory tool would likely count as low risk and face few checks. Buribayeva et al. warn that data gathered for social support in Kazakhstan could be reused for inspections, and that one body often regulates, operates and promotes AI at once.<sup><a href="#r31">31</a></sup> Both risks fit this project: the farmer's data must not flow to JerInSpectr, and the operator must not be the inspector.</p></div>
+      <div class="bill-card"><h3>Data ethics</h3><span class="tag down">risk</span><p>The service needs field boundaries, imagery, and what each farmer reports. The law requires explicit consent where automated processing changes a person's legal rights, and restricts transfer of data to foreign platforms without consent.<sup><a href="#r30">30</a></sup> In the Indian pilot, farm data sat in Microsoft's cloud.<sup><a href="#r23">23</a></sup> Kazakhstan would need data stored at home, consent per use, and a ban on sharing with lenders or insurers, the asymmetry Carbonell warns about.<sup><a href="#r20">20</a></sup></p></div>
+      <div class="bill-card"><h3>Equity</h3><span class="tag down">risk</span><p>Evidence from East Africa suggests digital advice works best for the already connected.<sup><a href="#r22">22</a></sup> Rural internet gaps and low digital literacy could mean the farms that most need help are the last to get it. Mhlambi's relational approach to AI ethics points to a remedy: design the service with farmer communities and associations, not only for individual users.<sup><a href="#r32">32</a></sup></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="verdict" id="verdict">
+  <div class="wrap">
+    <div class="sec-head plain"><h2 style="color:var(--wheat)">Verdict</h2></div>
+    <p class="big">Yes, but not by the inspector.</p>
+    <p class="lede">Kazakhstan should build an AI agronomist for its wheat farmers. Climate whiplash is making the farmer's main tool, habit, less reliable every year, and the evidence says digital advice is cheap and modestly effective. But the technology is the easy part. The hard part is trust, and that decides who should run it.</p>
+
+    <div class="conds">
+      <div class="cond"><h3>Free, and built for small farms</h3><p>Advice by SMS or voice, in Kazakh and Russian, on the phone farmers already have. The evidence from East Africa shows digital advice helps the connected most. If small farms have to pay, or need a smartphone, the service will widen the gap it should close.</p></div>
+      <div class="cond"><h3>Honest about the size of the gain</h3><p>Plan for a few percent, not thirty. The 30% figure comes from 175 groundnut farmers in India. Start with a pilot on northern wheat farms, measure it, and publish the results, good or bad.</p></div>
+      <div class="cond key"><h3>A wall between advice and inspection</h3><p>This is the condition everything else depends on. The state already watches fields to check farmers and owes them 391.7 billion tenge in unpaid subsidies. A farmer will not report a failing field to the same state that can penalise him for it.</p></div>
+    </div>
+
+    <div class="measure">
+      <h3 class="sub">So who should run it?</h3>
+      <p>Not the agency that inspects farmers, and not a vendor that profits from their data. The state should pay for it, as it would for any public service, but hand the running to an independent operator: a university, a farmers' association, or a non-profit like Precision Development. Farmers own their data, and the state sees only anonymised totals.</p>
+      <p>The technology for this exists today. What Kazakhstan does not yet have is the trust between farmers and the state that would make farmers use it honestly. Building that trust is not a technical problem, and no AI will solve it.</p>
+    </div>
+
+    <div class="sec-head plain" style="margin-top:4rem"><h2 id="transparency" style="color:var(--wheat)">AI transparency statement</h2></div>
+    <div class="measure">
+      <p>I built this project with Claude (Anthropic, Opus 5.5) as a research and design partner, in one dedicated project chat that I submit as my AI Process Log.</p>
+      <h3 class="sub">What AI contributed</h3>
+      <p>Searching for sources and summarising them; checking each reference against its original before it went on the site; first drafts of the text in all four sections, which I then revised; and the website itself: the layout, the figures, the animations and the code. The Kazakh SMS examples in "One season, four decisions" were drafted by AI and checked by me.</p>
+      <h3 class="sub">What I decided</h3>
+      <p>The topic, the four-decision framing of the season, and the verdict. I chose to combine two possible verdicts, "yes, under conditions" and "the technology is ready but the state is not", because the costs I found pointed to both. I also pushed the design through several rounds when early versions did not tell the story clearly.</p>
+      <h3 class="sub">What I rejected, and why</h3>
+      <p>Three earlier topics. AI-detected potholes on Astana's roads, because another student had already built that project. AI screening of public procurement for collusion, because I could not explain it with confidence, and a project I cannot defend without AI is not mine. An AI cashback advisor, because on reflection the "AI" only personalised a table of bank offers: a simple calculator could do the same, so it failed the test of whether AI is needed at all.</p>
+      <p>Within this project, I rejected the 30% yield gain from India as a planning figure, because it comes from 175 farmers who followed the advice. I did not describe the Indian app as "free", because no source I could find says so directly. Where sources disagree, as on how many Kazakh farms use digital tools, the site shows the disagreement instead of picking the convenient number.</p>
+    </div>
+  </div>
+</section>
+
+<section class="pale" id="sources">
+  <div class="wrap">
+    <div class="sec-head plain"><h2>Sources</h2></div>
+    <ol class="refs measure">
+      <li id="r1">Zakon.kz, citing USDA (2026). <a href="https://www.zakon.kz/finansy/6528599-ssha-otsenili-kazakhstan-v-tsentre-vnimaniya--urozhay-pshenitsy.html">США оценили Казахстан: в центре внимания – урожай пшеницы.</a></li>
+      <li id="r2">Karatayev, M., Clarke, M., Salnikov, V., Bekseitova, R., &amp; Nizamova, M. (2022). <a href="https://doaj.org/article/f2ffa6b2284649eaa40267853d254030">Monitoring climate change, drought conditions and wheat production in Eurasia: the case study of Kazakhstan.</a> Heliyon.</li>
+      <li id="r3">Romanovska, P., et al. (2024). <a href="https://publications.pik-potsdam.de/pubman/item/item_29979_1/component/file_29980/2024_06_18_Romanovska_ERL.pdf">Human-induced climate change has decreased wheat production in northern Kazakhstan.</a> Environmental Research: Climate, 3, 031005.</li>
+      <li id="r4">UkrAgroConsult (2025). <a href="https://ukragroconsult.com/ru/news/kazahstan-zavershil-sbor-urozhaya-zernovyh-kultur/">Казахстан завершил сбор урожая зерновых культур.</a></li>
+      <li id="r5">Inbusiness.kz, citing the Ministry of Agriculture (11 Nov 2025). <a href="https://www.inbusiness.kz/ru/last/ii-pomogaet-kazahstanskim-agrariyam-povyshat-urozhaj">ИИ помогает казахстанским аграриям повышать урожай.</a></li>
+      <li id="r6">Kursiv, citing the Bureau of National Statistics (2026). <a href="https://kz.kursiv.media/?p=6803921">Фермерские хозяйства массово закрываются в Казахстане.</a></li>
+      <li id="r7">24KZ (21 Oct 2026). <a href="https://24.kz/ru/news/economyc/800777-sputniki-sledyat-za-polyami-ii-pomogaet-fermeram-kak-menyaetsya-selskoe-khozyajstvo-kazakhstana">Спутники следят за полями, ИИ помогает фермерам.</a></li>
+      <li id="r8">Microsoft India. <a href="https://news.microsoft.com/en-in/features/ai-agriculture-icrisat-upl-india/">Digital agriculture: farmers in India are using AI to increase crop yields.</a></li>
+      <li id="r9">Microsoft India (9 Jan 2017). <a href="https://news.microsoft.com/en-in/microsoft-and-icrisats-intelligent-cloud-pilot-for-agriculture-in-andhra-pradesh-increase-crop-yield-for-farmers/">Microsoft and ICRISAT's Intelligent Cloud pilot for agriculture in Andhra Pradesh increase crop yield for farmers.</a></li>
+      <li id="r10">Panyushkina, I. P., Shayakhmetova, A., Pashkov, S., &amp; Agafonov, L. I. (2024). <a href="https://mdpi.com/2077-0472/14/6/790">Unstable state of hydrologic regime and grain yields in Northern Kazakhstan estimated with tree-ring proxies.</a> Agriculture, 14(6), 790.</li>
+      <li id="r12">Tengrinews (2026). <a href="https://tengrinews.kz/article/kak-sebya-oschuschayut-kazahstanskie-fermeryi-v-2026-godu-4172/">Как себя ощущают казахстанские фермеры в 2026 году.</a></li>
+      <li id="r13">Ministry of Agriculture of Kazakhstan (2026). <a href="https://www.gov.kz/memleket/entities/moa/press/news/details/1189734?lang=ru">Казахстан усиливает трансформацию АПК в рамках ЕАЭС.</a></li>
+      <li id="r14">Fabregas, R., Kremer, M., &amp; Schilbach, F. (2019). <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10859166/">Realizing the potential of digital development: The case of agricultural advice.</a> Science, 366(6471), eaay3038.</li>
+      <li id="r15">VoxDev. <a href="https://voxdev.org/topic/agriculture/harnessing-benefits-digital-agriculture-smallholder-farmers-east-africa">Harnessing the benefits of digital agriculture for smallholder farmers in East Africa.</a> Summary of Fabregas et al., six SMS extension trials in Kenya and Rwanda.</li>
+      <li id="r16">Klerkx, L., Jakku, E., &amp; Labarthe, P. (2019). <a href="https://hal.inrae.fr/hal-02619856">A review of social science on digital agriculture, smart farming and agriculture 4.0: New contributions and a future research agenda.</a> NJAS – Wageningen Journal of Life Sciences, 90–91, 100315.</li>
+      <li id="r17">Toguzova, M., Shaimardanova, B., Shaimardanov, Z., Assylkhanova, Z. A., &amp; Rakhymberdina, M. (2023). <a href="https://isprs-archives.copernicus.org/articles/XLVIII-5-W2-2023/125/2023/">Analysis of the introduction of precision farming elements in East Kazakhstan: Problems and prospects of development.</a> ISPRS Archives, XLVIII-5-W2-2023, 125–130.</li>
+      <li id="r18">FAO (2022). <a href="https://openknowledge.fao.org/server/api/core/bitstreams/f6d24049-0cfa-460d-8863-e0ff8261ca7b/content">Promotion and exchange of good practices on the use of digital technologies in agriculture (TCP/KAZ/3704).</a></li>
+      <li id="r19">Rotz, S., Duncan, E., Small, M., Botschner, J., Dara, R., Mosby, I., Reed, M., &amp; Fraser, E. D. G. (2019). <a href="https://pure.sruc.ac.uk/en/publications/the-politics-of-digital-agricultural-technologies-a-preliminary-r/">The politics of digital agricultural technologies: A preliminary review.</a> Sociologia Ruralis, 59(2), 203–229.</li>
+      <li id="r20">Carbonell, I. M. (2016). <a href="https://policyreview.info/articles/analysis/ethics-big-data-big-agriculture">The ethics of big data in big agriculture.</a> Internet Policy Review, 5(1).</li>
+      <li id="r21">GiveWell. <a href="https://www.givewell.org/node/3479">Precision Development (mobile-based agricultural advice).</a></li>
+      <li id="r22">Precision Development. <a href="https://precisiondev.org/?p=1142">One Acre Fund research collaboration – Kenya.</a></li>
+      <li id="r23">Windows Report. <a href="https://windowsreport.com/?p=1345992">Microsoft and ICRISAT use AI and Azure to help make agriculture more efficient.</a></li>
+      <li id="r24">ICRISAT. <a href="https://idc.icrisat.org/idc/?p=1637">New Sowing Application increases yield by 30%.</a></li>
+      <li id="r33">Neftissov, A., Biloshchytskyi, A., Andrashko, Y., Kuchanskyi, O., Vatskel, V., Toxanov, S., &amp; Gladka, M. (2024). <a href="https://doi.org/10.15587/1729-4061.2024.298478">Evaluating the effectiveness of precision farming technologies in the activities of agricultural enterprises.</a> Eastern-European Journal of Enterprise Technologies, 1(13), 6–13.</li>
+      <li id="r34">Romanovska, P., Schauberger, B., &amp; Gornott, C. (2023). <a href="https://doi.org/10.1016/j.eja.2023.126843">Wheat yields in Kazakhstan can successfully be forecasted using a statistical crop model.</a> European Journal of Agronomy, 147, 126843.</li>
+      <li id="r25">Luccioni, S., Trevelin, B., &amp; Mitchell, M. (2024). <a href="https://doi.org/10.57967/hf/3004">The environmental impacts of AI: Policy primer.</a> Hugging Face.</li>
+      <li id="r26">The Astana Times (June 2026), citing the Ministry of Energy. <a href="https://astanatimes.com/2026/06/coal-accounts-for-over-60-of-kazakhstans-electricity-as-its-energy-mix-diversifies/">Coal accounts for over 60% of Kazakhstan's electricity as its energy mix diversifies.</a></li>
+      <li id="r27">Li, P., Yang, J., Islam, M. A., &amp; Ren, S. (2023). <a href="https://arxiv.org/abs/2304.03271">Making AI less "thirsty": Uncovering and addressing the secret water footprint of AI models.</a> arXiv:2304.03271.</li>
+      <li id="r28">Tubaro, P., Casilli, A. A., &amp; Coville, M. (2020). The trainer, the verifier, the imitator: Three ways in which human platform workers support artificial intelligence. Big Data &amp; Society, 7(1).</li>
+      <li id="r29">Williams, A., &amp; Miceli, M. (2023). Data work and its layers of (in)visibility. Just Tech, Social Science Research Council.</li>
+      <li id="r30">Law of the Republic of Kazakhstan No. 230-VIII <a href="https://zakon.uchet.kz/rus/docs/Z2500000230">"On Artificial Intelligence"</a> (17 Nov 2025); summary of obligations in <a href="https://chambers.com/articles/current-issues-in-artificial-intelligence-regulation-in-kazakhstan">Chambers (June 2026)</a>.</li>
+      <li id="r31">Buribayeva, M., Khamzina, Z., &amp; Buribayev, Y. (2026). Potential negative effects of artificial intelligence in Kazakhstan's public sector: An analysis of hidden risks. Frontiers in Artificial Intelligence, 9, 1781993.</li>
+      <li id="r32">Mhlambi, S. (2020). From rationality to relationality: Ubuntu as an ethical and human rights framework for artificial intelligence governance. Carr Center Discussion Paper 2020-009.</li>
+    </ol>
+  </div>
+</section>
+
+<footer><div class="wrap">Final project, PLS 519: AI from a Social Science Perspective. Nazarbayev University, Fall 2026.</div></footer>
+
+<script>
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ns = "http://www.w3.org/2000/svg";
+const $ = id => document.getElementById(id);
+const mk = (parent, n, a, t) => { const e = document.createElementNS(ns, n); for (const k in a) e.setAttribute(k, a[k]); if (t !== undefined) e.textContent = t; parent.appendChild(e); return e; };
+const onSeen = (node, fn, th = .4) => new IntersectionObserver((es, o) => es.forEach(e => { if (e.isIntersecting) { fn(); o.disconnect(); } }), { threshold: th }).observe(node);
+
+/* ---------- hero: satellite scan over a patchwork of fields ---------- */
+(function () {
+  const svg = $("field");
+  const COL = { g: "#5F8A3A", s: "#D9A33A", d: "#B9472B" };
+  // deterministic patchwork
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const plots = [];
+  const rows = [0, 70, 150, 215, 290, 360];
+  for (let r = 0; r < rows.length - 1; r++) {
+    let x = 0;
+    while (x < 600) {
+      const w = Math.min(600 - x, 70 + Math.floor(rnd() * 110));
+      const v = rnd(); const st = v < .55 ? "g" : v < .82 ? "s" : "d";
+      plots.push({ x, y: rows[r], w, h: rows[r + 1] - rows[r], st });
+      x += w;
+    }
+  }
+  const g = mk(svg, "g", {});
+  plots.forEach(p => {
+    p.el = mk(g, "rect", { x: p.x + 2, y: p.y + 2, width: p.w - 4, height: p.h - 4, rx: 4, fill: "#E9D9AE", class: "plot" });
+    // furrows
+    for (let k = p.y + 10; k < p.y + p.h - 4; k += 9) mk(g, "line", { x1: p.x + 6, x2: p.x + p.w - 6, y1: k, y2: k, stroke: "rgba(42,33,25,.10)", "stroke-width": 1 });
+  });
+  const beam = mk(svg, "rect", { x: -40, y: 0, width: 40, height: 360, fill: "url(#beam)" });
+  const defs = mk(svg, "defs", {});
+  const lg = mk(defs, "linearGradient", { id: "beam", x1: 0, x2: 1 });
+  mk(lg, "stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0 });
+  mk(lg, "stop", { offset: 1, "stop-color": "#fff", "stop-opacity": .75 });
+  const sat = mk(svg, "g", {});
+  mk(sat, "rect", { x: -9, y: -6, width: 18, height: 12, rx: 2, fill: "#2A2119" });
+  mk(sat, "rect", { x: -31, y: -4, width: 20, height: 8, fill: "#3D6E8C" });
+  mk(sat, "rect", { x: 11, y: -4, width: 20, height: 8, fill: "#3D6E8C" });
+
+  function paint(x) { plots.forEach(p => { if (p.x + p.w / 2 < x) p.el.setAttribute("fill", COL[p.st]); }); }
+  if (reduce) { paint(700); sat.setAttribute("transform", "translate(560 16)"); beam.remove(); return; }
+  let t0 = null; const dur = 6500, pause = 3500;
+  function frame(t) {
+    if (t0 === null) t0 = t;
+    const k = ((t - t0) % (dur + pause)) / dur;
+    if (k <= 1) {
+      const x = k * 640;
+      beam.setAttribute("x", x - 40); sat.setAttribute("transform", `translate(${x} 16)`);
+      paint(x);
+    } else if (k > 1 && !frame.reset) {
+      frame.reset = true;
+    }
+    if (k < .02 && frame.reset) { plots.forEach(p => p.el.setAttribute("fill", "#E9D9AE")); frame.reset = false; }
+    requestAnimationFrame(frame);
+  }
+  setTimeout(() => requestAnimationFrame(frame), 600);
+})();
+
+/* ---------- swaying wheat ---------- */
+(function () {
+  const svg = $("stalks");
+  for (let i = 0; i < 120; i++) {
+    const x = i * 10 + (i % 3) * 2, h = 38 + (i * 37 % 26);
+    const s = mk(svg, "g", { class: "stalk" });
+    s.style.animationDelay = (-(i % 9) * .35) + "s";
+    mk(s, "line", { x1: x, y1: 70, x2: x, y2: 70 - h, stroke: "#B88B2A", "stroke-width": 1.6 });
+    mk(s, "ellipse", { cx: x, cy: 70 - h - 6, rx: 3, ry: 8, fill: "#E4B43F" });
+  }
+})();
+
+/* ---------- the season ---------- */
+const STAGES = [
+  { today: "Most farms sow what they sowed last year, or what the neighbours sow. Wheat goes on fields where it has failed in dry years before.",
+    ai: "The advisor compares each field's satellite history over many seasons with the long-range outlook. It flags fields where wheat keeps failing in dry years and suggests oilseeds or fallow instead.",
+    kk: "3-егістік: соңғы құрғақ жылдары бидай өнімі төмен болды. Майлы дақыл немесе сүрі жер қарастырыңыз.",
+    en: "Field 3: wheat yields were low here in recent dry years. Consider oilseeds or fallow." },
+  { today: "Sowing dates follow the calendar and tradition. Sow too early and frost hits; too late and the crop does not ripen before autumn.",
+    ai: "The advisor combines soil moisture, the weather forecast and frost risk into a sowing window for each field, the same idea as India's AI Sowing App.",
+    kk: "1-егістік: себуге қолайлы кезең 18–24 мамыр. Топырақ ылғалы жеткілікті, үсік қаупі төмен.",
+    en: "Field 1: best sowing window 18–24 May. Soil moisture is adequate, frost risk is low." },
+  { today: "Fertiliser is expensive and is usually spread evenly across the whole field. Disease and pests are noticed when they are already visible from the road.",
+    ai: "Satellite images show which parts of a field lag behind, so fertiliser goes where it pays. A farmer can photograph a sick plant and get a diagnosis.",
+    kk: "2-егістіктің солтүстік бөлігі артта қалып жатыр. Тыңайтқышты тек сол жерге беріңіз. Тот ауруының белгілерін тексеріңіз.",
+    en: "The north part of Field 2 is lagging. Apply fertiliser only there. Check for signs of rust." },
+  { today: "Harvest starts when the grain looks ready and the combines are free. Autumn rains can catch grain still in the field.",
+    ai: "The advisor tracks ripeness and the rain forecast field by field, and suggests the order in which to send combines.",
+    kk: "Жаңбыр 4 күннен кейін күтіледі. Алдымен 1- және 3-егістікті ораңыз.",
+    en: "Rain expected in 4 days. Harvest Fields 1 and 3 first." }
+];
+let typing = null;
+function showStage(i) {
+  document.querySelectorAll(".season-bar button").forEach(b => b.setAttribute("aria-selected", b.dataset.i == i));
+  const s = STAGES[i], st = $("stage");
+  st.classList.remove("stage-enter"); void st.offsetWidth; st.classList.add("stage-enter");
+  st.innerHTML = `<div class="col"><h3>Today</h3><p>${s.today}</p></div>
+    <div class="col ai"><h3>With the AI agronomist</h3><p>${s.ai}</p></div>
+    <div><div class="phone"><div class="screen"><div class="from">SMS · Agro advisor</div><div class="sms" id="sms"></div><div class="tr" id="tr"></div></div></div>
+    <small>Illustrative message. The advisor would write in Kazakh or Russian.</small></div>`;
+  clearInterval(typing);
+  const box = $("sms"), tr = $("tr");
+  if (reduce) { box.textContent = s.kk; tr.textContent = s.en; return; }
+  let n = 0; box.innerHTML = '<span class="caret"></span>';
+  typing = setInterval(() => {
+    n += 2; box.innerHTML = s.kk.slice(0, n) + '<span class="caret"></span>';
+    if (n >= s.kk.length) { clearInterval(typing); box.textContent = s.kk; tr.textContent = s.en; }
+  }, 28);
+}
+document.querySelectorAll(".season-bar button").forEach(b => b.addEventListener("click", () => showStage(+b.dataset.i)));
+document.querySelector(".season-bar").addEventListener("keydown", e => {
+  const cur = +document.querySelector('.season-bar [aria-selected="true"]').dataset.i;
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") { const nx = (cur + (e.key === "ArrowRight" ? 1 : 3)) % 4; showStage(nx); document.querySelector(`.season-bar [data-i="${nx}"]`).focus(); }
+});
+onSeen($("season"), () => showStage(0), .25);
+
+/* ---------- counting facts ---------- */
+document.querySelectorAll("[data-count]").forEach(b => {
+  const target = +b.dataset.count, suf = b.dataset.suffix || "";
+  if (reduce) { b.textContent = target + suf; return; }
+  onSeen(b, () => { const t0 = performance.now(); (function tick(t) { const k = Math.min(1, (t - t0) / 1100); b.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))) + suf; if (k < 1) requestAnimationFrame(tick); })(t0); }, .8);
+});
+
+/* ---------- the gap: 243 squares ---------- */
+(function () {
+  const box = $("units");
+  for (let i = 0; i < 243; i++) { const sq = document.createElement("i"); if (i === 0) sq.className = "unit-on"; sq.style.transitionDelay = (i * 4) + "ms"; box.appendChild(sq); }
+  const fig = $("fig-gap"), n = $("gap-n");
+  onSeen(fig, () => {
+    box.classList.add("on");
+    if (reduce) { n.textContent = "648"; return; }
+    setTimeout(() => { const t0 = performance.now(); (function tick(t) { const k = Math.min(1, (t - t0) / 1200); n.textContent = Math.round(648 * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(tick); })(t0); }, 900);
+  }, .35);
+})();
+
+/* ---------- evidence bars ---------- */
+onSeen($("evid"), () => $("evid").classList.add("seen"), .5);
+
+
+/* ---------- reading progress ---------- */
+(function () {
+  const bar = $("progress");
+  const upd = () => { const h = document.documentElement; bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + "%"; };
+  addEventListener("scroll", upd, { passive: true }); upd();
+})();
+
+/* ---------- fading farms ---------- */
+(function () {
+  const box = $("farms"), n = $("farm-n");
+  const dots = []; for (let i = 0; i < 261; i++) { const d = document.createElement("i"); box.appendChild(d); dots.push(d); }
+  // the 18 that disappear are spread across the grid
+  const gone = []; for (let k = 0; k < 18; k++) gone.push(dots[(k * 97 + 41) % 261]);
+  const fmtN = v => Math.round(v).toLocaleString("en-US");
+  onSeen($("fig-farms"), () => {
+    if (reduce) { gone.forEach(d => d.classList.add("gone")); n.textContent = "243,000"; return; }
+    gone.forEach((d, k) => setTimeout(() => { d.classList.add("gone"); n.textContent = fmtN(261000 - (k + 1) * 1000); }, 500 + k * 140));
+  }, .4);
+})();
+
+/* ---------- two numbers ---------- */
+onSeen($("clash"), () => $("clash").classList.add("seen"), .6);
+
+/* ---------- the data wall ---------- */
+(function () {
+  const g = $("wall-dots"); if (!g) return;
+  const NS = "http://www.w3.org/2000/svg";
+  const flows = [
+    { d: "M160 120 L280 120", col: "#5F8A3A", dur: 2.2, n: 3 },
+    { d: "M280 140 L160 140", col: "#E4B43F", dur: 2.2, n: 3 },
+    { d: "M420 145 L545 205", col: "#A99A84", dur: 2.6, n: 2 },
+    { d: "M420 115 L487 83", col: "#B9472B", dur: 1.6, n: 2, blocked: true }
+  ];
+  const start = () => flows.forEach(f => {
+    for (let i = 0; i < f.n; i++) {
+      const c = document.createElementNS(NS, "circle");
+      c.setAttribute("r", 6); c.setAttribute("fill", f.col); c.setAttribute("stroke", "#fff"); c.setAttribute("stroke-width", 1.5);
+      const m = document.createElementNS(NS, "animateMotion");
+      m.setAttribute("path", f.d); m.setAttribute("dur", f.dur + "s"); m.setAttribute("begin", (-i * f.dur / f.n) + "s"); m.setAttribute("repeatCount", "indefinite");
+      c.appendChild(m);
+      if (f.blocked) {
+        const o = document.createElementNS(NS, "animate");
+        o.setAttribute("attributeName", "opacity"); o.setAttribute("values", "1;1;0"); o.setAttribute("keyTimes", "0;.85;1");
+        o.setAttribute("dur", f.dur + "s"); o.setAttribute("begin", (-i * f.dur / f.n) + "s"); o.setAttribute("repeatCount", "indefinite");
+        c.appendChild(o);
+      }
+      g.appendChild(c);
+    }
+  });
+  if (reduce) return;
+  onSeen($("fig-wall"), start, .35);
+})();
+
+/* ---------- balance ---------- */
+onSeen($("scale-wrap"), () => $("scale-wrap").classList.add("seen"), .5);
+
+/* ---------- section highlight ---------- */
+(function () {
+  const links = [...document.querySelectorAll(".bar a")];
+  const map = new Map(links.map(a => [a.getAttribute("href").slice(1), a]));
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { links.forEach(a => a.classList.remove("here")); map.get(e.target.id)?.classList.add("here"); } }), { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("section[id]").forEach(s => io.observe(s));
+})();
+</script>
+</body>
+</html>
